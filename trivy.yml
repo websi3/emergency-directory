@@ -1,0 +1,47 @@
+name: Trivy Vulnerability Scan
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_image:
+        description: 'Docker image to scan (e.g., nginx:latest)'
+        required: true
+      scan_type:
+        description: 'Type of scan: image or filesystem'
+        required: true
+        default: 'image'
+
+jobs:
+  trivy-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create results directory
+        run: mkdir -p results/trivy
+
+      - name: Run Trivy scan (Docker image)
+        if: ${{ github.event.inputs.scan_type == 'image' }}
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ github.event.inputs.target_image }}
+          format: json
+          output: results/trivy/trivy_results.json
+          severity: HIGH,CRITICAL
+
+      - name: Run Trivy scan (filesystem)
+        if: ${{ github.event.inputs.scan_type == 'filesystem' }}
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          path: ./
+          format: json
+          output: results/trivy/trivy_results.json
+          severity: HIGH,CRITICAL
+
+      - name: Upload scan results
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-scan-results
+          path: results/trivy/trivy_results.json
